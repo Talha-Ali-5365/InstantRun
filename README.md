@@ -35,19 +35,17 @@ The InstantRun agent follows these steps:
 
 ## How to Use
 
-1.  **Install Dependencies:** Ensure you have Python 3.10 or later, Docker, and the required Python packages installed. You can install the required packages using `pip install -r requirements.txt` if you have a `requirements.txt` file in the project.
-2.  **Set API Key:** Set your OpenAI API key in the `instantrun.py` file. Replace `'YOUR_API_KEY'` with your actual API key.
-3.  **Run the Script:** Execute the `instantrun.py` script with the desired GitHub repository URL as a command-line argument.
+1.  **Install Dependencies:** Ensure you have Python 3.10 or later, Docker, and the required Python packages installed. You can install the required packages using `pip install -r requirements.txt`.
+2.  **Set API Key:** Set your OpenAI API key in the `instantrun.py` file. Replace `'YOUR_API_KEY'` with your actual API key. Also, ensure that the base url is set correctly in the `instantrun.py` file.
+3.  **Run the Script:** Execute the `main.py` script. The repository URL is passed as an argument in the `main.py` file.
 
 ## Example
 
-```bash
-python instantrun.py --repo_url https://github.com/GeorgeZhukov/python-snake
-```
+To run the script, execute `python main.py`. The `main.py` file is already configured to run the `python-snake` game repository. To run a different repository, change the `github_repo_url` variable in `main.py`.
 
 ## Configuration
 
--   **LLM:** Uses `hf:meta-llama/Llama-3.3-70B-Instruct` as the language model. You can change this in the `instantrun.py` file.
+-   **LLM:** Uses `gpt-4o-mini` as the language model. You can change this in the `instantrun.py` file.
 -   **Output Format:** Adheres to a strict JSON output format for all LLM interactions, ensuring consistent parsing.
 -   **Docker:** Uses Docker to containerize the repository setup, ensuring a consistent environment.
 -   **Operating System:** Designed to work on Arch Linux, but may be adaptable to other Linux distributions with minor modifications.
@@ -56,10 +54,8 @@ python instantrun.py --repo_url https://github.com/GeorgeZhukov/python-snake
 
 ## Notes
 
--   The agent will remove the repository folder if it already exists to ensure a clean setup.
--   The `docker run` command will open a new terminal window using `alacritty -e` for better user experience.
--   The agent avoids using `cd` commands as it assumes the current directory is the repository's root after cloning.
--   The agent will not install dependencies directly using `pip install` if there is no `requirements.txt` file.
+-   The `docker run` command will open a new terminal window using `alacritty -e` for terminal ouptut, So make sure alacritty terminal is installed on your machine.
+-   The agent is not perfect and may encounter issues with certain repositories or setups. It is recommended to review the terminal output for any errors or issues.
 
 ## Contributing
 

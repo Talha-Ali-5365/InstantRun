@@ -1,54 +1,25 @@
-from langgraph.graph import StateGraph, MessagesState, START, END
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langgraph.graph import StateGraph, START, END
 from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, Field
-from typing import List,Dict,Any,Literal
+from typing import Literal
 import nest_asyncio
 from langchain_core.output_parsers import JsonOutputParser
 import os
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage
 from IPython.display import Image, display
 from langgraph.checkpoint.memory import MemorySaver
 import subprocess
-
+import pprint
+from constants import plan_prompt, output_schema, format_dir, readme_prompt
+from config import SetupFiles, container_setup, State
+# For github
 # Initialize the language model
 llm = ChatOpenAI(
-    model = 'hf:meta-llama/Llama-3.3-70B-Instruct',
+    model = 'gpt-4o-mini',
     api_key = 'YOUR_API_KEY',
-    base_url = 'https://glhf.chat/api/openai/v1'
 )
-
-# Define Pydantic models for data structures
-class SetupFiles(BaseModel):
-    readme : str = Field(description="The readme file of the repo")
-    requirements : str = Field(description="The requirements file of the repo")
-
-class container_setup(BaseModel):
-    dockerfile : str = Field(description="The docker file content")
-    dockerfile_status : bool = Field(description="The status of the dockerfile key in the json")
-    commands : List[str] = Field(description="The commands to run the docker file and the repo")
 
 # Define a JSON output parser for SetupFiles
 folder_parser = JsonOutputParser(pydantic_object=SetupFiles)
-
-# Define the state for the LangGraph
-class State(MessagesState):
-    github_repo_url : str
-    imp_files: SetupFiles
-    execution_commands: container_setup
-    repo_structure: str
-
-# Define the prompt for extracting file paths
-format_dir = """
-Output the directory content in following format:
-{
-    readme : path of readme if exist else empty strings like "" (eg: ./folder1/folder2/README.md)
-    requirements : path of requirements if exist else empty strings like "" (eg: ./folder1/folder2/requirements.txt)
-}
-
-Remeber we are already in the repo folder so double check the path you generate. It should be accurate!!
-OUTPUT SHOULD BE THE ABOVE JSON FORMAT ANY NOTHING ELSE NOT EVEN A SINGLE CHARACTER EXTRA, NO EXPLANATION , NOTHING ELSE JUST THE JSON FORMAT.
-"""
   
 # Node to clone the repository
 def clone_repo(state: State):
@@ -67,12 +38,7 @@ def clone_repo(state: State):
         print('+'*50)
     return {'messages': messages,'imp_files': parsed_output, 'repo_structure': directory_content}
 
-# Prompt for extracting setup instructions from README
-readme_prompt = """
-Find the setup instructions in the readme file and output only the setup instructions part in a well formatted manner if setup instructions are present otherwise no if not present. 
-Output should be setup instructions or no, and nothing else.
-Remember to output the setup instructions only and not the entire readme file.
-"""
+
 # Node to get setup instructions from the README file
 def get_readme(state: State):
     print('Finding setup instructions in readme file!!!')
@@ -95,47 +61,6 @@ def check_readme(state: State) -> Literal["get_readme", "plan"]:
         return "get_readme"
     return "plan"
 
-# Prompt for planning the setup
-plan_prompt = """
-## Task
-
-Create a step-by-step plan to set up a GitHub repository on my Linux PC using Docker. The repository has already been cloned, and we are currently in that directory.
-
-## Instructions
-
-1. **Detailed Steps:** Provide a thorough plan, including every step needed to get the repository running.
-2. **Docker Setup:**  Assume Docker, Docker Compose, and all related components are installed. The setup must be done entirely within a Docker container.
-3. **Starting Point:** Begin your plan from the current state: the repository is cloned, and we have already changed the directory to repository's.
-4. **Include All Essentials:** Your plan should list all necessary commands, code (like Dockerfiles), and any other actions required.
-5. **Execution:** Remember, any command you include will be executed directly in the terminal.
-6. **System:** The operating system is Arch Linux, So tailor you commands accordingly.
-
-# Command Instructions
-- **Avoid using `cd`:** We are already in the right directory after cloning the repository. So, avoid using `cd repository` in your plan.
-
-# For Python Repositories
-- **Python Version:** Use Python 3.10 or later.
-- **Dependency installation:** Use only requirements.txt for dependency installation. Do not install any dependency directly using `pip install` and leave them if there is no requirements.txt.
-
-## Output Format
-
-Provide a detailed plan to set up the repository. This plan should include:
-
--   **Dockerfile:** If a Dockerfile is not present in the repository, provide the content for one. If it exists, leave this field empty (e.g., "").
--   **Commands:** A list of commands to build and run the Docker container.
-
-**Strictly adhere to the following JSON format without any backticks:**
-
-{
-    "dockerfile": "Content of Dockerfile or empty string",
-    "dockerfile_status": "True/False (false if dockerfile key content is empty else true)",
-    "commands": ["List of commands"]
-}
-
-**DO NOT OUTPUT ANY SINGLE CHARACTER OUTSIDE OF THIS JSON STRUCTURE.**
-**Sometimes paths may contains spaces like "folder 1" , alway wrap that kind of paths in double quotes and make sure to start and end with same backward slash and double qoute like \"./temp/folder 1\"**
-***Note:*** *The docker run command should have a prefix "alacritty -e " cause this will open up a new window for user. DO THIS ONLY FOR RUNNING NOT BUILDING**
-"""
 
 # Define a JSON output parser for container setup
 container_parser = JsonOutputParser(pydantic_object=container_setup)
@@ -155,7 +80,8 @@ def plan(state: State):
 # Node to execute the commands
 def execute_commands(state: State):
     print('Executing the commands!!!')
-    print(f'Following commands are being executed:\n {state["execution_commands"]["commands"]}')
+    print(f'Following commands are being executed:\n')
+    pprint.pprint(f"{state['execution_commands']['commands']}")
     print('+'*50)
     # Create Dockerfile if needed
     if state['execution_commands']['dockerfile_status']:
@@ -181,6 +107,7 @@ def check_errors(state: State) -> Literal["fix_errors", END]:
     if "yes" in output.content:
         print('!'*50)
         print("Error detected!!!")
+        print(f'Error: \n {message.content}')
         print('!'*50)
         return "fix_errors"
     
@@ -191,27 +118,7 @@ def check_errors(state: State) -> Literal["fix_errors", END]:
     print(f'Final output = {state["messages"][-1]}')
     return END
 
-# Output schema for error fixing
-output_schema = """
-## Output Format
 
-Provide a detailed plan to set up the repository. This plan should include:
-
--   **Dockerfile:** If a Dockerfile is not present in the repository, provide the content for one. If it exists, leave this field empty (e.g., "").
--   **Commands:** A list of commands to build and run the Docker container.
-
-**Strictly adhere to the following JSON format without any backticks:**
-
-{
-    "dockerfile": "Content of Dockerfile or empty string",
-    "dockerfile_status": "True/False (false if dockerfile key content is empty else true)",
-    "commands": ["List of commands"]
-}
-
-**DO NOT OUTPUT ANY SINGLE CHARACTER OUTSIDE OF THIS JSON STRUCTURE.**
-**Sometimes paths may contains spaces like "folder 1" , alway wrap that kind of paths in double quotes and make sure to start and end with same backward slash and double qoute like \"./temp/folder 1\"**
-***Note:*** *The docker run command should have a prefix "alacritty -e " cause this will open up a new window for user. DO THIS ONLY FOR RUNNING NOT BUILDING**
-"""
 # Node to fix errors
 def fix_errors(state: State):
     print('Fixing the errors!!!')
@@ -241,23 +148,12 @@ workflow.add_conditional_edges(
 workflow.add_edge('fix_errors', 'execute_commands')
 workflow.set_entry_point('clone_repo')
 graph = workflow.compile(checkpointer=MemorySaver())
+
+
+
+#uncomment the following lines to generate the png of flow graph
+########################################################################################
 # image = Image(graph.get_graph(xray=True).draw_mermaid_png())
 # with open("graph.png", "wb") as f:
 #     f.write(image.data)
 # display(image)
-
-# System prompt for the agent
-system_prompt = """
-You are a helpful AI ASSISTANT inside a complex Agentic graph that can setup any github online repository on user's PC.
-If an Output schema is defined by the user then do not output any single character other than that schema
-"""
-
-config = {"recursion_limit": 100,"configurable": {"thread_id": "2"}}
-# https://github.com/deviant101/Find-GitHub-Repos-StarLang
-# https://github.com/GeorgeZhukov/python-snake
-if os.path.exists("python-snake"):
-    os.system("rm -r python-snake")
-messages = [SystemMessage(content=system_prompt)]
-output = graph.invoke({'messages': messages,'github_repo_url': 'https://github.com/GeorgeZhukov/python-snake'},config)
-for m in output['messages'][-1:]:
-    m.pretty_print()
