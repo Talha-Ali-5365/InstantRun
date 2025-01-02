@@ -4,6 +4,9 @@
 
 InstantRun is an AI-powered agent designed to autonomously deploy any GitHub repository on a user's local machine. It leverages a LangGraph workflow to handle the entire process, from cloning the repository to executing the necessary commands within a Docker container. This tool aims to simplify the process of setting up and running projects, especially those with complex dependencies or setup procedures.
 
+## Architecture
+![Graph](graph.png)
+
 ## Key Features
 
 -   **Autonomous Deployment:** Automatically clones, sets up, and runs any GitHub repository with minimal user intervention.
