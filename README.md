@@ -7,6 +7,13 @@ InstantRun is an AI-powered agent designed to autonomously deploy any GitHub rep
 ## Architecture
 ![Graph](graph.png)
 
+## Video Demo
+
+Here are the video demos of InstantRun in action:
+
+- Terminal based python snake game: [https://youtu.be/q0lOUSm7raM](https://youtu.be/q0lOUSm7raM)
+- Web flask app: [https://youtu.be/2NnVxgIjUvU](https://youtu.be/2NnVxgIjUvU)
+
 ## Key Features
 
 -   **Autonomous Deployment:** Automatically clones, sets up, and runs any GitHub repository with minimal user intervention.
@@ -36,7 +43,7 @@ The InstantRun agent follows these steps:
     -   Re-executing the commands.
 8.  **Completion:** If no errors are detected, the setup is considered complete, and the final output is displayed.
 
-## How to Use
+## Setup Instructions
 
 1.  **Install Dependencies:** Ensure you have Python 3.10 or later, Docker, and the required Python packages installed. You can install the required packages using `pip install -r requirements.txt`.
 2.  **Set API Key:** Set your OpenAI API key in the `instantrun.py` file. Replace `'YOUR_API_KEY'` with your actual API key. Also, ensure that the base url is set correctly in the `instantrun.py` file.
